@@ -11,7 +11,7 @@ import java.util.Date;
 public class SdtDecoder {
 
 
-	final static String version = "SdtDecoder v1.01, 21.12.2014";
+	final static String version = "SdtDecoder v1.02, 21.12.2014";
 
 	
 	public static void main(String[] args) {
@@ -53,7 +53,7 @@ public class SdtDecoder {
 		return (((b4 * 256) + b3) * 256 + b2) * 256 + b1;
 	}
 
-	public String decodeElTyp (int elType)
+	public String decodeElTyp (int elType) throws SdtBinaryFormatException
 	{
 		switch (elType) {
 		case 201:
@@ -71,7 +71,8 @@ public class SdtDecoder {
 		case 0:
 			return "End of list";
 		default:
-			return "??? " + Integer.toString(elType) + " ???";
+			throw new SdtBinaryFormatException ("unknown element type: " + elType);
+//			return "??? " + Integer.toString(elType) + " ???";
 		}
 	}
 	public void printHeader (PrintStream outf, String name)
@@ -147,7 +148,7 @@ public class SdtDecoder {
 		outf.println("    DW      " + tdbversion);
 	}
 
-	public void printElement (PrintStream outf, int elType, int elIndex, int bitpos)
+	public void printElement (PrintStream outf, int elType, int elIndex, int bitpos) throws SdtBinaryFormatException
 	{
 /*
     ; Boolean 60407 ab Bit-Position 1020
@@ -226,6 +227,9 @@ label_end_4097:
 			while ((wcuId = this.readUInt16(inf)) != 0)
 			{
 				len = this.readUInt32(inf);
+				if ((len % 5) != 2) {
+					throw new SdtBinaryFormatException ("len mod 5 should be 2 for every wcu: " + len);
+				}
 				tdbversion = this.readUInt16(inf);
 				printWcuHeader (outf, wcuId, len, tdbversion);
 				len -= 2; // consume the tdbversion which is included in len
@@ -240,16 +244,38 @@ label_end_4097:
 				printWcuFooter (outf, wcuId);
 			}
 			len = this.readUInt32(inf);
-			int eof = inf.read();
+			if (len != 0) {
+				throw new SdtBinaryFormatException ("DD len at EOF should be zero: " + len);
+			}
+			
+			int i = 0;
+			int eof;
+			while (((eof = inf.read()) != -1) || (i == 4)) {
+				if (i == 0)
+					System.out.print ("Extra Bytes at EOF: " + eof);
+				else
+					System.out.print (", " + eof);
+				i++;
+			};
+			if (i > 0) {
+				System.out.println();
+			}
+			if (eof != -1) {
+				throw new SdtBinaryFormatException ("Too many extra Bytes at EOF.");
+			}
+			
 			printFooter (outf);
 			outf.close();
 			inf.close();
 			
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+			System.err.println(e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.err.println(e.getMessage());
+			e.printStackTrace();
+		} catch (SdtBinaryFormatException e) {
+			System.err.println(e.getMessage());
 			e.printStackTrace();
 		}
 		
