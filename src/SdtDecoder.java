@@ -11,7 +11,7 @@ import java.util.Date;
 public class SdtDecoder {
 
 
-	final static String version = "SdtDecoder v1.02, 21.12.2014";
+	final static String version = "SdtDecoder v1.03, 22.12.2014";
 
 	
 	public static void main(String[] args) {
